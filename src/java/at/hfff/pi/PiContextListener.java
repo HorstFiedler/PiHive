@@ -1,4 +1,3 @@
-/* $Id: PiContextListener.java,v 1.5 2019/09/13 13:33:58 horst Exp $ */
 package at.hfff.pi;
 
 import static at.hfff.pi.PiHive.LOG;

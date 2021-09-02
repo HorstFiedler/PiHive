@@ -1,4 +1,3 @@
-/* $Id: Sensor.java,v 1.14 2019/11/12 15:54:26 horst Exp $ */
 package at.hfff.pi;
 
 /**

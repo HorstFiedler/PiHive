@@ -1,4 +1,3 @@
-/* $Id: ZAMGStation.java,v 1.7 2020/05/12 16:58:02 horst Exp $ */
 package at.hfff.pi;
 
 import java.io.IOException;

@@ -1,4 +1,3 @@
-/* $Id: OWMStation.java,v 1.2 2019/11/13 08:13:26 horst Exp $ */
 package at.hfff.pi;
 
 import java.util.Map;

@@ -1,4 +1,3 @@
-/* $Id: PiEndpoint.java,v 1.8 2020/03/15 18:36:39 horst Exp $ */
 package at.hfff.pi.ws;
 
 import static at.hfff.pi.PiHive.LOG;   // main class logger used

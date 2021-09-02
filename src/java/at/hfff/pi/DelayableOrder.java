@@ -1,4 +1,3 @@
-/* $Id: DelayableOrder.java,v 1.5 2019/07/08 10:17:49 horst Exp $ */
 package at.hfff.pi;
 
 import java.text.SimpleDateFormat;

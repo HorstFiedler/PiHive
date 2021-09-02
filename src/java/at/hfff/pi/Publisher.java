@@ -1,4 +1,3 @@
-/* $Id: Publisher.java,v 1.11 2020/03/15 18:36:39 horst Exp $ */
 package at.hfff.pi;
 
 import java.io.Serializable;

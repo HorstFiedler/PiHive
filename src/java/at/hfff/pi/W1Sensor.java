@@ -1,4 +1,3 @@
-/* $Id: W1Sensor.java,v 1.12 2020/03/21 21:32:39 horst Exp $ */
 
 /**
  * should become base for temperatures sampling

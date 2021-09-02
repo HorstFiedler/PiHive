@@ -1,4 +1,4 @@
-/* $Id: psvg.js,v 1.2 2020/03/12 16:57:31 horst Exp $ */
+/* graphics display thru websocket connection */
 
 "use strict";
 

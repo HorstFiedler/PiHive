@@ -1,4 +1,3 @@
-/* $Id: Chart.java,v 1.7 2019/08/14 20:58:09 horst Exp $ */
 package at.hfff.pi;
 
 import java.awt.BasicStroke;

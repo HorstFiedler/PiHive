@@ -1,4 +1,3 @@
-/* $Id: PiHive.java,v 1.22 2021/09/02 10:09:05 horst Exp $ */
 package at.hfff.pi;
 
 import at.hfff.pi.ws.PiEndpoint;

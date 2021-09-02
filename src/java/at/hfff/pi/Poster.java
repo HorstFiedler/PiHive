@@ -1,4 +1,3 @@
-/* $Id: Poster.java,v 1.4 2020/03/18 22:25:10 horst Exp $ */
 package at.hfff.pi;
 
 import static at.hfff.pi.PiHive.LOG;

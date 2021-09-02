@@ -1,4 +1,3 @@
-/* $Id: HXSensor.java,v 1.21 2020/06/28 12:16:54 horst Exp $ */
 package at.hfff.pi;
 
 import com.pi4j.io.gpio.GpioPinDigitalInput;

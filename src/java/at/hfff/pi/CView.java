@@ -1,4 +1,3 @@
-/* $Id: CView.java,v 1.4 2019/08/14 20:58:07 horst Exp $ */
 package at.hfff.pi;
 
 import java.awt.Color;

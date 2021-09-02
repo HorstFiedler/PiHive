@@ -1,4 +1,4 @@
-/* $Id: local.js,v 1.17 2020/03/27 15:31:14 horst Exp $ */
+/* enable websocket connection */
 
 "use strict";
 

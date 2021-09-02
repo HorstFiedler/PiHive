@@ -1,4 +1,3 @@
-/* $Id: History.java,v 1.9 2019/11/11 23:22:40 horst Exp $ */
 package at.hfff.pi;
 
 import static at.hfff.pi.PiHive.LOG;
