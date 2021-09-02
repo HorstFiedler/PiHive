@@ -1,0 +1,110 @@
+/* $Id: local.css,v 1.9 2020/03/13 18:31:47 horst Exp $ 
+ * mutch taken from tiff - move - index.html
+ * see https://www.cleancss.com/css-beautify/ for uncompress css
+ * for cleartext materials of e.g. https://code.getmdl.io/1.3.0/material.indigo-pink.min.css
+ * for dialog see https://wiki.selfhtml.org/wiki/HTML/Interaktiv/dialog
+ * this file shall be included after materials css to override e.g. button margin
+ */
+body {
+	font-family: Avenir, Arial, sans-serif;
+}
+#start:hover,
+#start:focus {
+	background-color: #333;
+	transform: translateY(2px);
+}
+.dialog {
+	width: 20em;
+	background-color: #fffbf0;
+	border: 1px solid #e7c157;
+        border-radius: 0 .5rem .5rem;
+	margin: 1em;
+	position: absolute;
+	top: 10%;
+	right: 30%;
+	margin: auto;
+	padding: 1em;
+	display: none;
+}
+.dialog::backdrop {
+	background-color: rgba(0, 0, 0, 0.6);
+}
+.dialog[open] {
+	display: block;
+}
+/* dialog example end */
+h4 {
+  line-height: 24px;
+  margin: 0 0 16px;  /* bottom only */
+}
+nav a:hover {
+  font-weight: bold;
+}
+.layout-transparent {
+  /*background: url('//tanzen.hfff.at/pix/ostern-2011.jpg') center / cover;*/
+  background-color: dimgray;
+  color: rgba(20, 20, 20, 0.9);
+}
+.mdl-mini-footer {
+  height: 0px;  /* without bottom spacer */
+}
+.mdl-layout__drawer {
+  width: 135px; /* default 240 */
+}
+.mdl-layout__drawer .mdl-navigation .mdl-navigation__link {
+  padding: 8px; /* default: 16px 40px */
+}
+.mdl-button {
+  margin-top: 6px;   /* default: 0  (aka margin:0)  */
+}
+.mdl-button--icon {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+.mlplus {
+  margin-left: 10px;
+}
+.widetext {
+  width: 100%;
+}
+.numfld {
+  width: 80px;
+  margin: 5px;
+  text-align: right;
+}
+.rngfld {
+  width: 240px;
+  height: 12px;
+}
+.txtfld {
+  width: 125px;  
+  margin: 5px;
+  text-align: left;
+}
+.dialog_select {
+  width: 100px;
+  margin: 5px;
+}
+.cview_ch {
+  width: 40px;
+}
+#console-container {
+  float: left;
+  margin: 0px 6px; /* top,bottom 0, left,right 6 */
+  width: 336px; /* remove left-float to get whole width, but chart (getSVG()) has hardcoded width)*/
+}
+#console {
+  border: 1px solid #CCCCCC;
+  border-right-color: #999999;
+  border-bottom-color: #999999;
+  background-color: gainsboro;
+  height: 372px;
+  overflow-y: scroll;
+  padding: 5px;
+  width: 100%;
+}
+#console p {
+  padding: 0px;
+  margin:  0px;
+}
