@@ -31,8 +31,8 @@ public class HXSensor extends Sensor {
   private final GpioPinDigitalInput pinData;
 
   // for plausibility check 
-  private static final double PFMIN = 0.05; // Log raw data when plausibility is less than PFMIN
-  private static final double PFSHAPE = 8;   // > 0 , higher value reduces noise but decreases reaction time
+  private static final double PFMIN = 0.2; // Log raw data when plausibility is less than PFMIN
+  private static final double PFSHAPE = 2;   // > 0 , higher value reduces noise but decreases reaction time
   private double weight = Double.NaN;  // weight (mean)
   private double psv = Double.NaN; // preceeding scaled measured value
 
@@ -62,6 +62,7 @@ public class HXSensor extends Sensor {
   // => reverting back to fixed limits allowing first one higher (as observed)
   private static final long PULSEMAX1 = 86000;
   private static final long PULSEMAX = 68000;
+  private static final long PULSEMIN = 15000;
   
   private volatile int failCnt = 0;
   private final long[] highs = new long[gain];  // record high pulse timing for debug 
@@ -121,28 +122,35 @@ public class HXSensor extends Sensor {
         //  LOG.log(Level.WARNING, "Got error {0}", LinuxFile.errno());
         // returns -1 and LinuxFile.errno() says 1  (no priv.)
         // checking code shows that attempt to change to realtime schedling not working for tomcat8 threads
-        long dynmax = PULSEMAX1;
+        long dynmax = PULSEMAX1;         // first shift may take longer
         int count = 0;
+        long nt = System.nanoTime();
         for (int i = 0; i < gain; i++) {
-          long nt = System.nanoTime();
           pinClk.setState(PinState.HIGH);
+          while ((System.nanoTime() - nt) < PULSEMIN){}
           count = count << 1;   //shift (*2)
           pinClk.setState(PinState.LOW);
           if ((highs[i] = System.nanoTime() - nt) > dynmax) {
             count = -1;     // too slow 
             break;
           }
-          dynmax = PULSEMAX;
+          dynmax = PULSEMAX;            // for succeeding shifts
           if (pinData.isHigh())
             count++;          // +1 
+          nt = System.nanoTime();
         }
+        while ((System.nanoTime() - nt) < PULSEMIN){}
+        pinClk.setState(PinState.HIGH); // The 25th (or 27th) pulse at PD_SCK input will pull DOUT pin back to high        
         if (count > 0) {
-          pinClk.setState(PinState.HIGH); // The 25th (or 27th) pulse at PD_SCK input will pull DOUT pin back to high
-          count = count ^ 0x800000;     // 2 complement 
+          nt = System.nanoTime();
+          while ((System.nanoTime() - nt) < PULSEMIN){}
           pinClk.setState(PinState.LOW);
+          count = count ^ 0x800000;     // 2 complement
+          nt = System.nanoTime();
+          while ((System.nanoTime() - nt) < PULSEMIN){}
+          pinClk.setState(PinState.HIGH);  // poweroff (keep high for long time) if not done above
         }
-        pinClk.setState(PinState.HIGH);  // poweroff 
-
+        
         Gpio.piHiPri(10);    // thread finish will do, nevertheless
         Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
         // ======================= end critical section
@@ -156,7 +164,7 @@ public class HXSensor extends Sensor {
             weight = psv = sv;   // startup
           } else {
             // plausibiltiy factor for floating mean, see e.g. 1/(5x+1) on https://rechneronline.de/funktionsgraphen/
-            double pf = 1.0 / (1.0 + PFSHAPE * Math.abs(sv - psv)/getDelta());
+            double pf = 1.0 / (1.0 + PFSHAPE * Math.abs(sv - psv)* getDelta());
             weight = pf * sv + (1.0 - pf) * weight;
             if (pf < PFMIN || logred == 1) { // log when plausibility is very low (bitshift error or huge weight change)
               LOG.log(Level.INFO, "count={0} sv={1} psv={2} pf={3} weight={4}\n{5}"
