@@ -129,7 +129,10 @@ public class PiHive implements Runnable {
       LOG.log(Level.WARNING, "Check nameservice for validity!!!, fix eg. by wlan router reboot");
       netName = ex.getMessage();  
     }
-    persistDir = new File(System.getProperty("user.home") + "/persist/" + name.toLowerCase());
+    // where additional application data are placed
+    // TODO: into logs with names pihive-data.log, phihive-sensors.cfg, ...
+    //  to allow security strict within tomcat9.service
+    persistDir = new File(System.getProperty("catalina.base") + "/persist/" + name.toLowerCase());
     if (!persistDir.canRead()) 
       if (!persistDir.mkdir())
         LOG.log(Level.SEVERE, "Unable to create servlets persistence files at {0}", persistDir.getAbsolutePath());
