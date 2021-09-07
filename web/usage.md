@@ -36,16 +36,14 @@ Während Arbeiten am Stock empfiehlt es sich die Waage auszuschalten (Checkbox i
 
 ## Diagrammanzeige
 
-Um das Diagramm periodisch (z.Z. ist stündlich voreingestellt) auf einen Webserver (z.B. auf die Homepage des Imkers) zu übertragen ist das entsprechende Ziel im Format ftp://<user>:<password>@<server>/<verzeichnis>/<hive>.svg einzutragen, z.B. ftp://ftp3802813:promuX5@ftp95.world4you.com/bees/stock3.svg
+Um das Diagramm periodisch (z.Z. ist stündlich voreingestellt) auf einen Webserver (z.B. auf die Homepage des Imkers) zu übertragen ist das entsprechende Ziel im Format ftp://<user>:<password>@<server>/<verzeichnis>/<hive>.svg einzutragen.
 
 Die Übertragung wird deaktiviert wenn das Zielfeld leer ist.
 
 ## Archivierung
 
 Da die Anzeige nur einen vorkonfigurerten Zeitraum (z.Z. 1 Woche) zeigt können die Daten periodisch (z.Z. ist wöchentlich voreingestellt) auf einem Zielserver (z.B. in ein nicht öffentliches Verzeichnis auf der Homepage) gespeichert werden.
-Falls sich in der Angabe noch das Feld <date> findet wird dieses vor dem Speichern durchs aktuelle Datum ersetzt um ein Überschreiben zu verhindern, z.B.  
-ftp://ftp3802813:promuX5@ftp95.world4you.com/bees/stock3\-<date>.log  
-wird zu ...com/bees/stock3\-190426-1621.log  
+Falls sich in der Angabe noch das Feld <date> findet wird dieses vor dem Speichern durchs aktuelle Datum ersetzt um ein Überschreiben zu verhindern. 
 Achtung: Auch beim Einschalten werden die aktuell vorhandenen Daten hochgeladen und es beginnt ein neues Intervall.
 
 Die Übertragung wird deaktiviert wenn das Zielfeld leer ist.  
