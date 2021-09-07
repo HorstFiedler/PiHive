@@ -62,6 +62,7 @@ public class HXSensor extends Sensor {
   // => reverting back to fixed limits allowing first one higher (as observed)
   private static final long PULSEMAX1 = 86000;
   private static final long PULSEMAX = 68000;
+  // since bullseye,tomcat9 with zulu11 java minwidth of pulse required!?
   private static final long PULSEMIN = 15000;
   
   private volatile int failCnt = 0;
@@ -124,30 +125,28 @@ public class HXSensor extends Sensor {
         // checking code shows that attempt to change to realtime schedling not working for tomcat8 threads
         long dynmax = PULSEMAX1;         // first shift may take longer
         int count = 0;
-        long nt = System.nanoTime();
+
         for (int i = 0; i < gain; i++) {
+          long nt = System.nanoTime();
           pinClk.setState(PinState.HIGH);
-          while ((System.nanoTime() - nt) < PULSEMIN){}
           count = count << 1;   //shift (*2)
+          nanowait(nt, PULSEMIN);
           pinClk.setState(PinState.LOW);
-          if ((highs[i] = System.nanoTime() - nt) > dynmax) {
-            count = -1;     // too slow 
+          if ((highs[i] = System.nanoTime() - nt) > dynmax) {  // overall time shall no exceed PULSEMAX
+            count = -1;     // too slow, invalidate result
             break;
           }
           dynmax = PULSEMAX;            // for succeeding shifts
           if (pinData.isHigh())
             count++;          // +1 
-          nt = System.nanoTime();
         }
-        while ((System.nanoTime() - nt) < PULSEMIN){}
+        nanowait(PULSEMIN);
         pinClk.setState(PinState.HIGH); // The 25th (or 27th) pulse at PD_SCK input will pull DOUT pin back to high        
         if (count > 0) {
-          nt = System.nanoTime();
-          while ((System.nanoTime() - nt) < PULSEMIN){}
+          nanowait(PULSEMIN);
           pinClk.setState(PinState.LOW);
           count = count ^ 0x800000;     // 2 complement
-          nt = System.nanoTime();
-          while ((System.nanoTime() - nt) < PULSEMIN){}
+          nanowait(PULSEMIN);
           pinClk.setState(PinState.HIGH);  // poweroff (keep high for long time) if not done above
         }
         
@@ -189,6 +188,24 @@ public class HXSensor extends Sensor {
     return true;
   }
   
+  /**
+   * short inline delay
+   * @param st timing start
+   * @param ns nanoseconds to expire
+   */
+  private void nanowait (long st, long ns) {
+    long till = st + ns;
+    while (System.nanoTime() < till){}
+  }
+  private void nanowait (long ns) {
+    nanowait(System.nanoTime(), ns);
+  }
+  
+  /**
+   * record timings for debugging
+   * @param highs
+   * @return 
+   */
   private String timing(long[] highs) {
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < highs.length; i++)
