@@ -41,6 +41,7 @@ public class W1Sensor extends Sensor {
   
   public W1Sensor(String[] params) {
     super(params);
+    setEnabled(false);       // default sensor constructor has true
   }
   
   /**
@@ -50,6 +51,7 @@ public class W1Sensor extends Sensor {
   public void setDevice(W1Device w1d) {
     this.w1d = w1d;
     setId(w1d.getId());
+    setEnabled(true);       // ok, sensor exists physically
   }
   
   /**
