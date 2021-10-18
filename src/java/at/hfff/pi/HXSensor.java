@@ -32,7 +32,7 @@ public class HXSensor extends Sensor {
 
   // for plausibility check 
   private static final double PFMIN = 0.2; // Log raw data when plausibility is less than PFMIN
-  private static final double PFSHAPE = 2;   // > 0 , higher value reduces noise but decreases reaction time
+  private static final double PFSHAPE = 4.0;   // > 0 , higher value reduces noise but decreases reaction time
   private double weight = Double.NaN;  // weight (mean)
   private double psv = Double.NaN; // preceeding scaled measured value
 
