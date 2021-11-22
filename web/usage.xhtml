@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title></title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
+<style>
+body {
+  font-family: "Roboto", sans-serif;
+  font-size: 80%;
+}
+</style>
+</head>
+<body>
+<h1>Anwenderinformation</h1>
+
+<h2>Stromanschluß</h2>
+
+<p>Stromversorgung 5V stabilisiert mittels USB Stecker. Mittels z.B. Telefonladegerät kann an das Hausnetz, oder mittels Zigarettenanzünder-Adapter an eine 12V Batterie angeschlossen werden.
+Für Solarpanels ist die Zwischenschaltung eines Pufferakkus empfohlen.  Das Verhalten bei langsamen Absinken (abend) bzw. Aufbau (morgens) der Versorgungsspannung wurde nicht getestet.
+Falls der Solarregler schnell ab und sicher  bei ausreichender Helligkeit wieder einschaltet und garantiert nicht "pendelt" ist ein Betrieb mit Nachtabschaltung möglich. </p>
+
+<h2>Netzwerkanschluß/WLAN</h2>
+
+<p>Die Waage benötigt WLAN-Zugang. Die Zugangsinformation ist im Gerät vorkonfiguriert.
+Das Gerät versucht nach Herstellung des Stomanschlusses mit einem Accesspoint MyHomeAP unter Verwendung des Passworts #PiHive# eine WLAN-Verbindung herzustellen.
+Zur Integration in das eventuell vorhandene Heimnetzwerk bestehen 2 Möglichkeiten:</p>
+
+<ol>
+<li><p>Installation eines zusätzlichen WLAN-Accespoints (Rangeextender, z.B. Netgear, oder Powerlineadapter, z.B. von Devolo) mit Name MyHomeAP, geschützt mit dem genannten WPA2/PSK Passwort #PiHive#.
+Das Problem: Dadurch wird ein Zugang zu ihrem Heimnetz eingerichtet der praktisch öffentlich bekannt ist.</p></li>
+<li><p>Temporäre Installation eines Routers (z.B. mittels Einstellung "Hotspot" auf Android-Telefonen) und Anpassung der der Zugangsinformation mit Texteditor unter Verwendung des SSH-Zugangs (Windows: puttty).
+Nach Trennen und Wiederherstellen der Stromversorgung versucht das Gerät sich  mit dem angegebenen Heimnetz zu verbinden.
+Empfehlenswert ist es die vorkonfigurierte Zugangsinformation im Gerät zu belassen sodaß bei Fehleingabe Korrekturmöglichkeit bleibt.</p></li>
+</ol>
+
+<p>Falls sich das Gerät nach Adaptierung entsprechend 2.) weder am Behelfsrouter noch am Heimnetz anmeldet muß das Gerät geöffnet werden, die MicroSD in einen Computer gesteckt und dort mit Texteditor die Änderung durchgeführt werden.  </p>
+
+<p>Zugriff auf das Gerät mittels SSH ist i.A.  40 Sekunden nach Stomanschluß möglich, die Webansicht (PiHive-Applikation) ist erst nach ca. 12 Minuten bereit.</p>
+
+<h2>Waagenkalibrierung</h2>
+
+<p>Die Waage ist nicht geeicht, kann aber wie folgt kalibriert werden:</p>
+
+<ol>
+<li><p>In der Applikation "Waage" wählen, das akutelle Gewicht des Stock eingeben und "Tara" drücken.</p></li>
+<li><p>Innerhalb von 10 Minuten ein Normgewicht (mindestens 5kg) zusätzlich auflegen, das neue Gesamtgewicht eingeben und nochmals "Tara" drücken, danach das Zusatzgewicht wieder entfernen.</p></li>
+</ol>
+
+<p>Während Arbeiten am Stock empfiehlt es sich die Waage auszuschalten (Checkbox im Waagendialog), zur Kalibrierung muß sie eingeschaltet bleiben.</p>
+
+<h2>Diagrammanzeige</h2>
+
+<p>Um das Diagramm periodisch (z.Z. ist stündlich voreingestellt) auf einen Webserver (z.B. auf die Homepage des Imkers) zu übertragen ist das 
+entsprechende Ziel im Format <code>ftp://&lt;user&gt;:&lt;password&gt;@&lt;server&gt;/&lt;verzeichnis&gt;/&lt;hive&gt;.svg</code> einzutragen.</p>
+
+<p>Die Übertragung wird deaktiviert wenn das Zielfeld leer ist.</p>
+
+<h2>Archivierung</h2>
+
+<p>Da die Anzeige nur einen vorkonfigurerten Zeitraum (z.Z. 1 Woche) zeigt können die Daten periodisch (z.Z. ist wöchentlich voreingestellt) auf einem Zielserver 
+(z.B. in ein nicht öffentliches Verzeichnis auf der Homepage) gespeichert werden.<code>ftp://&lt;user&gt;:&lt;password&gt;@&lt;server&gt;/&lt;verzeichnis&gt;/&lt;hive&gt;-&lt;date&gt;.log</code>.
+<code>&lt;date&gt;</code>, falls vorhanden wird vor dem Speichern durchs aktuelle Datum (yyddmm-HHMM) ersetzt um ein Überschreiben zu verhindern.</p>
+
+<p>Achtung: Auch beim Einschalten werden die aktuell vorhandenen Daten hochgeladen und es beginnt ein neues Intervall.</p>
+
+<p>Die Übertragung wird deaktiviert wenn das Zielfeld leer ist.</p>
+
+<h2>Nachverarbeitung</h2>
+
+<p>Mittels Java-Anwendung PiHiveChart (dafür muß Java am PC installiert sein) können die Daten bearbeitet werden, z.B. aus den Archivdaten einen Jahresverlauf erstellen,
+Fehlmesswerte (z.B. Waage nicht ausgeschaltet während Arbeiten am Stock) enfernen oder Kanäle mit Wetterdaten löschen.</p>
+</body>
+</html>

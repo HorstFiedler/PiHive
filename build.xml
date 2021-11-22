@@ -10,6 +10,16 @@
 <project name="PiHive" default="default" basedir=".">
     <description>Builds, tests, and runs the project PiHive.</description>
     <import file="nbproject/build-impl.xml"/>
+    <!-- 
+    ======================================================================
+    There are files to be created from project external sources not using the features 
+    here, e.g.
+       cd ./web
+       fig2xhtml ~/Dokumente/elektronik/PiHive/hat-layout-1.fig drawing.xhtml
+       md2xhtml ~/Dokumente/elektronik/PiHive/usage.md usage.xhtml
+    ======================================================================
+    -->    
+    
     <!--
 
     There exist several targets which are by default empty and which can be 
