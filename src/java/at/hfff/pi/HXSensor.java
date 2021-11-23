@@ -60,7 +60,7 @@ public class HXSensor extends Sensor {
   // WARNING: count=87ffff sv=25.132 pf=0.066 weight=23.799
   // 42999, 28000, 27000, 25999, 25999, 83998, 26999, 25999, 27000, 25000, 24999, 25999, 27000, 24999, 24999, 27000, 28000, 24999, 24999, 26000, 25999, 25999, 25000, 28000
   // => reverting back to fixed limits allowing first one higher (as observed)
-  private static final long PULSEMAX1 = 86000;
+  private static final long PULSEMAX1 = 78000;
   private static final long PULSEMAX = 68000;
   // since bullseye,tomcat9 with zulu11 java minwidth of pulse required!?
   private static final long PULSEMIN = 15000;
