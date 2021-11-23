@@ -32,7 +32,7 @@ public class HXSensor extends Sensor {
 
   // for plausibility check 
   private static final double PFMIN = 0.2; // Log raw data when plausibility is less than PFMIN
-  private static final double PFSHAPE = 2;   // > 0 , higher value reduces noise but decreases reaction time
+  private static final double PFSHAPE = 4.0;   // > 0 , higher value reduces noise but decreases reaction time
   private double weight = Double.NaN;  // weight (mean)
   private double psv = Double.NaN; // preceeding scaled measured value
 
@@ -60,7 +60,7 @@ public class HXSensor extends Sensor {
   // WARNING: count=87ffff sv=25.132 pf=0.066 weight=23.799
   // 42999, 28000, 27000, 25999, 25999, 83998, 26999, 25999, 27000, 25000, 24999, 25999, 27000, 24999, 24999, 27000, 28000, 24999, 24999, 26000, 25999, 25999, 25000, 28000
   // => reverting back to fixed limits allowing first one higher (as observed)
-  private static final long PULSEMAX1 = 86000;
+  private static final long PULSEMAX1 = 78000;
   private static final long PULSEMAX = 68000;
   // since bullseye,tomcat9 with zulu11 java minwidth of pulse required!?
   private static final long PULSEMIN = 15000;
@@ -153,7 +153,7 @@ public class HXSensor extends Sensor {
         Gpio.piHiPri(10);    // thread finish will do, nevertheless
         Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
         // ======================= end critical section
-        if (count == 0 || (count & 0xf00000) == 0xf00000) {     // -1 (ffffffff), 0, ffffff, 7fffff are definitly wrong
+        if (count <= 0 || count >= 0x7fffff) {     // -1 (ffffffff), 0, ffffff, 7fffff are definitly wrong
           // timing exceeded is quite normal on nonrealtime. especially during startup
           if (++failCnt % logred == 0) 
             LOG.log(Level.WARNING, "count={0} failCnt={1}\n{2}", new Object[]{Integer.toHexString(count), failCnt, timing(highs)});
