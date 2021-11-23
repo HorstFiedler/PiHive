@@ -153,7 +153,7 @@ public class HXSensor extends Sensor {
         Gpio.piHiPri(10);    // thread finish will do, nevertheless
         Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
         // ======================= end critical section
-        if (count == 0 || (count & 0xf00000) == 0xf00000) {     // -1 (ffffffff), 0, ffffff, 7fffff are definitly wrong
+        if (count <= 0 || count >= 0x7fffff) {     // -1 (ffffffff), 0, ffffff, 7fffff are definitly wrong
           // timing exceeded is quite normal on nonrealtime. especially during startup
           if (++failCnt % logred == 0) 
             LOG.log(Level.WARNING, "count={0} failCnt={1}\n{2}", new Object[]{Integer.toHexString(count), failCnt, timing(highs)});
