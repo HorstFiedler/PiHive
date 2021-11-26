@@ -31,8 +31,8 @@ public class HXSensor extends Sensor {
   private final GpioPinDigitalInput pinData;
 
   // for plausibility check 
-  private static final double PFMIN = 0.2; // Log raw data when plausibility is less than PFMIN
-  private static final double PFSHAPE = 4.0;   // > 0 , higher value reduces noise but decreases reaction time
+  private static final double PFMIN = 0.1; // ignore data raw data when plausibility is less than PFMIN
+  private static final double PFSHAPE = 16.0;   // > 0 , higher value reduces noise but decreases reaction time
   private double weight = Double.NaN;  // weight (mean)
   private double psv = Double.NaN; // preceeding scaled measured value
 
@@ -49,21 +49,25 @@ public class HXSensor extends Sensor {
 
   // wakeup may take a while (400 ms according sheet) but with 700 not yet low ???
   // aproaching by using multiple shorttime requests leads to less stable results
-  // 800 seems to be optimal 
   private static final long WAITMIN = 800;
   
-  // checking for pulse exceed (honeypi HX711.py does for > 60 µs)
-  // and invalidate result immediatly, appears as 0xffffffff in log
-  // often it is the first pulse which takes too long, therefor 2 limits
-  // with pihive1 100000 is too high, most often 6'th value exceed 80000 and result is bad then (remaining bits set):
-  // Apr 05, 2020 8:05:51 AM at.hfff.pi.HXSensor lambda$trigger$0
-  // WARNING: count=87ffff sv=25.132 pf=0.066 weight=23.799
-  // 42999, 28000, 27000, 25999, 25999, 83998, 26999, 25999, 27000, 25000, 24999, 25999, 27000, 24999, 24999, 27000, 28000, 24999, 24999, 26000, 25999, 25999, 25000, 28000
-  // => reverting back to fixed limits allowing first one higher (as observed)
-  private static final long PULSEMAX1 = 78000;
-  private static final long PULSEMAX = 68000;
+  /**
+   * Note: In nonrealtime mode it is not possible to avoid interruptions
+   * Here the attempt is made to dedect that by checking reaction.
+   * If it takes longer than PULSEMAX an invalid ADC readout is assumed
+   * (honeypi HX711.py does for > 60 µs), ak during shift operation no high pulse shall take longer then 60µs
+   * wiringPi shiftIn is not directly accessible by pi4j user API
+   * and a plausibility calculation allows to exclude values causing high slopes.
+   * See esphive project where HX711.cpp uses continuous sampling multiple values
+   * and allows to remove MIN and/or MAX before scaling.
+   * Continous sampling might help to increase reaction time.
+   * Attention: Turning loglevel to FINE will increase failure occurences
+   * WARNING: count=87ffff sv=25.132 pf=0.066 weight=23.799
+   * 42999, 28000, 27000, 25999, 25999, 83998, 26999, 25999, 27000, 25000, 24999, 25999, 27000, 24999, 24999, 27000, 28000, 24999, 24999, 26000, 25999, 25999, 25000, 28000
+   */
+  private static final long PULSEMAX = 80000;   // 60 µsec but we allow 80 here, measured for data pin
   // since bullseye,tomcat9 with zulu11 java minwidth of pulse required!?
-  private static final long PULSEMIN = 15000;
+  private static final long PULSEMIN = 30000;   // 30 µsec, used for clk pin
   
   private volatile int failCnt = 0;
   private final long[] highs = new long[gain];  // record high pulse timing for debug 
@@ -98,65 +102,60 @@ public class HXSensor extends Sensor {
       // reduced logging when not FINE
       int logred = LOG.isLoggable(Level.FINE) ? 1 : ERRLOG;
       
-      // expecting high in sleep mode
+      // assuming sleep state, aka HIGH 
       if (pinData.isHigh()) {
-        pinClk.setState(PinState.LOW);    // return to normal mode (wakeup)    
+        pinClk.setState(PinState.LOW);    // return to normal mode (wakeup)
 
+      
+        Arrays.fill(highs, 0);   // for pulse timing check   
+        // last chance of OS to do something else
         try {
           sleep(WAITMIN);
         } catch (InterruptedException ex) {
           LOG.log(Level.SEVERE, null, ex);
         }
-
-        if (!pinData.isLow()) // funny: message  seen but succeeding value gathering was ok 
-          LOG.log(Level.INFO, "Unexpected: DOut should be low here (data ready)");
-
-        Arrays.fill(highs, 0);   // for pulse timing check
-        
-        // ======================= start critical section
-        // during shift operation no high pulse shall take longer then 60µs
-        // wiringPi shiftIn is not directly accessible by pi4j user API
-        // doesnt help against 0x7fffff, nevertheless
+        // ======================= start critical section      
         Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
         Gpio.piHiPri(49);     // doc: for root users only ?
         //if (Gpio.piHiPri(49) == -1)
         //  LOG.log(Level.WARNING, "Got error {0}", LinuxFile.errno());
         // returns -1 and LinuxFile.errno() says 1  (no priv.)
         // checking code shows that attempt to change to realtime schedling not working for tomcat8 threads
-        long dynmax = PULSEMAX1;         // first shift may take longer
+        
         int count = 0;
-
+        boolean timeErr = false;      // timing error
+        boolean startErr = !pinData.isLow();   // DOut should be low here (data ready)");        
         for (int i = 0; i < gain; i++) {
           long nt = System.nanoTime();
           pinClk.setState(PinState.HIGH);
           count = count << 1;   //shift (*2)
           nanowait(nt, PULSEMIN);
           pinClk.setState(PinState.LOW);
-          if ((highs[i] = System.nanoTime() - nt) > dynmax) {  // overall time shall no exceed PULSEMAX
-            count = -1;     // too slow, invalidate result
-            break;
-          }
-          dynmax = PULSEMAX;            // for succeeding shifts
+          timeErr = timeErr || ((highs[i] = System.nanoTime() - nt) > PULSEMAX);  // overall time shall no exceed PULSEMAX
+          nanowait(PULSEMIN); 
           if (pinData.isHigh())
             count++;          // +1 
         }
-        nanowait(PULSEMIN);
-        pinClk.setState(PinState.HIGH); // The 25th (or 27th) pulse at PD_SCK input will pull DOUT pin back to high        
-        if (count > 0) {
-          nanowait(PULSEMIN);
-          pinClk.setState(PinState.LOW);
-          count = count ^ 0x800000;     // 2 complement
-          nanowait(PULSEMIN);
-          pinClk.setState(PinState.HIGH);  // poweroff (keep high for long time) if not done above
-        }
+        count = count ^ 0x800000;     // 2 complement
         
+        // another pulse. the 25th (or 27th) pulse at PD_SCK input will pull DOUT pin back to high
+        pinClk.setState(PinState.HIGH);
+        nanowait(PULSEMIN);
+        pinClk.setState(PinState.LOW);
+        nanowait(PULSEMIN);
+        
+        // poweroff (keep high for long time) 
+        pinClk.setState(PinState.HIGH); // The 25th (or 27th) pulse at PD_SCK input will pull DOUT pin back to high        
+
         Gpio.piHiPri(10);    // thread finish will do, nevertheless
         Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
+        
         // ======================= end critical section
-        if (count <= 0 || count >= 0x7fffff) {     // -1 (ffffffff), 0, ffffff, 7fffff are definitly wrong
+        if (timeErr || count >= 0x7fffff) {     // ffffff, 7fffff are definitly wrong
           // timing exceeded is quite normal on nonrealtime. especially during startup
           if (++failCnt % logred == 0) 
-            LOG.log(Level.WARNING, "count={0} failCnt={1}\n{2}", new Object[]{Integer.toHexString(count), failCnt, timing(highs)});
+            LOG.log(Level.INFO, "count={0} failCnt={1} startErr={2} timeOvr={3}\n{4}"
+              , new Object[]{Integer.toHexString(count), failCnt, startErr, timeErr, timing(highs)});
         } else {
           double sv = calibrate((double) count);
           if (Double.isNaN(weight)) {
@@ -166,22 +165,24 @@ public class HXSensor extends Sensor {
             double pf = 1.0 / (1.0 + PFSHAPE * Math.abs(sv - psv)* getDelta());
             weight = pf * sv + (1.0 - pf) * weight;
             if (pf < PFMIN || logred == 1) { // log when plausibility is very low (bitshift error or huge weight change)
-              LOG.log(Level.INFO, "count={0} sv={1} psv={2} pf={3} weight={4}\n{5}"
-                , new Object[]{Integer.toHexString(count), sv, psv, pf, weight, timing(highs)});
+              LOG.log(Level.INFO, "count={0} sv={1} psv={2} pf={3} weight={4}"
+                , new Object[]{Integer.toHexString(count), sv, psv, pf, weight});
+              LOG.log(Level.FINE, "{0}", timing(highs));
             }
-            psv = sv;
+            if (pf > PFMIN) {   // completly ignore otherwise
+              psv = sv;              
+              snv = new StampedNV(getName(), Math.round(weight * 100) / 100.0);
+            }
           }
           if (failCnt >= logred)
             LOG.log(Level.INFO, "Errorcount reset after a serie of {0} faults", failCnt);
           failCnt = 0;
-          snv = new StampedNV(getName(), Math.round(weight * 100) / 100.0);
         }
       } else {
-        // try to set into sleep state
-        pinClk.setState(PinState.LOW);  // ensure low
+        // try again to set into sleep state
+        pinClk.setState(PinState.HIGH);
         if (failCnt++ % logred == 0)
           LOG.log(Level.INFO, "Unexpected: DOut should be high here (sleep state), failCnt={0}", failCnt);
-        pinClk.setState(PinState.HIGH);  // poweroff
       }
       return snv;
     }));
