@@ -140,8 +140,7 @@ public class HXSensor extends Sensor {
           if (pinData.isHigh())
             count++;          // +1 
           nth = microwait(ntl, PULSEMIN);
-          //timeErr  |= (lows[i] = nth - ntl) > PULSEMAX; // low exceeds seem to cause no problems
-          lows[i] = nth - ntl;
+          timeErr |= (lows[i] = nth - ntl) > PULSEMAX;
         }
         count = count ^ 0x800000;     // 2 complement
         
@@ -157,7 +156,7 @@ public class HXSensor extends Sensor {
         Gpio.piHiPri(10);    // thread finish will do, nevertheless
         Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
         
-        // ======================= end critical section
+        // ======================= end critical section, check result
         if (timeErr || count >= 0x7fffff) {     // ffffff, 7fffff are definitly wrong
           // timing exceeded is quite normal on nonrealtime. especially during startup
           failCnt++;
@@ -173,13 +172,14 @@ public class HXSensor extends Sensor {
             // plausibiltiy factor for floating mean, see e.g. 1/(5x+1) on https://rechneronline.de/funktionsgraphen/
             double pf = 1.0 / (1.0 + PFSHAPE * Math.abs(sv - psv)* getDelta());
             weight = pf * sv + (1.0 - pf) * weight;
-            if (pf < PFMIN || logred == 1) { // log when plausibility is very low (bitshift error or huge weight change) or Level.FINE
+            if (pf < PFMIN || logred == 1) {
+              // log when plausibility is very low (bitshift error or huge weight change) or Level.FINE
               LOG.log(Level.INFO, "count={0} sv={1} psv={2} pf={3} weight={4}"
                 , new Object[]{Integer.toHexString(count), sv, psv, pf, weight});
               LOG.log(Level.INFO, "Highs:{0}", timing(highs));
               LOG.log(Level.INFO, "Lows: {0}", timing(lows));
             }
-            if (pf >= PFMIN) {   // completly ignore otherwise
+            if (pf >= PFMIN) {    // completly ignore otherwise
               psv = sv;              
               snv = new StampedNV(getName(), Math.round(weight * 100) / 100.0);
               if (failCnt > 0)   // log and reset failCnt
