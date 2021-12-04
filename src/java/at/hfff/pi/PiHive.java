@@ -668,36 +668,39 @@ public class PiHive implements Runnable {
 
   /**
    * get value of a variable
-   * field needs to be at least 'protected' to be accessible from here
    *
-   * @param name (classname.fieldname)  classname without packed which is added here 
+   * @param name is sensorname with some special cases for taring  
    * @return String timestamp + name + value
    * @throws IllegalArgumentException when name not available or accessibility
    * privat
    */
   public String getValue(String name) throws IllegalArgumentException {
-    Object value = "-- unavailable --";
+    StampedNV nv = null;
     Sensor s;
     switch (name) {
-      case "WTSensor": // just state (isValid true/false)
-        s = sensorMap.get("WT");
-        if (s != null)
-          value = s.isEnabled() ? 0 : 1;
-        else
-          LOG.log(Level.WARNING, "No sensor for {0}", name);
-        break;
-
-      case "WTTare": // current weight as tare start value
+      case "WTSensor": // just state (enabled true/false)
+      case "WTTare":   // current weight as tare start value
         s = sensorMap.get("WT");
         if (s != null) {
-          StampedNV slast = s.getLast();
-          if (slast != null)
-            value = slast.value;
-        } else
-          LOG.log(Level.WARNING, "No sensor for {0}", name);
+          if (name.equals("WTSensor"))
+            nv = new StampedNV(name, s.isEnabled() ? 0 : 1);
+          else {
+            nv = s.getLast();
+            if (nv != null)
+              nv = new StampedNV(name, nv.value);
+          }            
+        }
+        break;
+
+      default:
+        s = sensorMap.get(name);
+        if (s != null)
+          nv = s.getLast();
         break;
         
-      default: // addressing local field (with single redirection)
+        /* addressing local field (with single redirection) removed
+        * field needs to be at least 'protected' to be accessible from here
+        * qualified name shall be (classname.fieldname)
         try {
           int lsep = name.lastIndexOf('.');
           String lName = name;
@@ -720,16 +723,23 @@ public class PiHive implements Runnable {
         } catch (NoSuchFieldException | SecurityException | IllegalAccessException | ArrayIndexOutOfBoundsException ex) {
           LOG.log(Level.WARNING, name, ex);
         }
+        */
     }
-    StampedNV snvf = new StampedNV(name, value);
-    LOG.fine(() -> String.format("getVar(%1s) -> %2s", name, snvf));
-    return snvf.toString();
+    if (nv == null) {
+      if (s == null)
+        LOG.log(Level.WARNING, "No sensor for {0}", name);
+      else
+        LOG.log(Level.WARNING, "No value for {0}", name);
+      nv = new StampedNV(name, Double.NaN);
+    }
+    LOG.log(Level.FINE,"getValue({0}) -> {1}", new Object[]{name, nv});
+    return nv.toString();
   }
 
   /**
    * set value of a variable
    *
-   * @param name is Pi (this) local fieldname (direct)  or local fieldname[n].fieldname in object referenced by fieldname[n]
+   * @param name name of sensor (or special name)
    * @param arg is string which has to be decoded/parset to create setter argument
    * Currently sensor.name true|false can be use to enable/disable sensors 
    * @throws IllegalArgumentException when name not available or accessibility
@@ -772,7 +782,10 @@ public class PiHive implements Runnable {
         history.add(new StampedNV(name, arg));
         break;
       default:
-        try {
+        /* Experimental, qualified names to access foreign classes never used
+         * name is Pi (this) local fieldname (direct)  or local fieldname[n].fieldname in object referenced by fieldname[n]
+         * to access objects which are members of this (PiHive) class, e.g. 
+      try {
         int lsep = name.lastIndexOf('.');
         String lName = name;
         String rName = null;
@@ -800,6 +813,7 @@ public class PiHive implements Runnable {
         LOG.log(Level.WARNING, "Failed to set value", ex);
         throw new IllegalArgumentException(name + ": " + arg + " invalid");
       }
+        */
     }
   }
 
