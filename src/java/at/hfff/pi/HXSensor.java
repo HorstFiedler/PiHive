@@ -179,12 +179,14 @@ public class HXSensor extends Sensor {
               LOG.log(Level.INFO, "Highs:{0}", timing(highs));
               LOG.log(Level.INFO, "Lows: {0}", timing(lows));
             }
-            if (pf >= PFMIN) {    // completly ignore otherwise
+            if (pf >= PFMIN) {
               psv = sv;              
               snv = new StampedNV(getName(), Math.round(weight * 100) / 100.0);
               if (failCnt > 0)   // log and reset failCnt
                 LOG.log(Level.FINE, "Errorcount reset after a serie of {0} faults", failCnt);
               failCnt = 0;              
+            } else {
+              psv = weight;     // dont store without ignoring "far off" values completly
             }
           }
         }
