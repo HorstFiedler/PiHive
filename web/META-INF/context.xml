@@ -1,2 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Context path="/PiHive"/>
+<!-- for HXSensor async tasks, see https://serverfault.com/questions/1021145/tomcat-not-shutting-down-completely-tomcat-9-0-31 -->
+<Context path="/PiHive"
+         clearReferencesStopTimerThreads="true" />
