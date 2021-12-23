@@ -67,6 +67,7 @@ public class HXSensor extends Sensor {
    * FINE: Lows: 59, 53, 49, 51, 50, 50, 48, 51, 49, 50, 48, 50, 49, 50, 48, 50, 50, 50, 47, 50, 49, 49, 48, 50
   */
   private static final int PULSEMAX = 60;   // 60 µsec, measured for data pin
+  //private static final int PULSEMAX = 80;     // pihive3 needs more time??? 
   // since bullseye,tomcat9 with zulu11 java minwidth of pulse required!?
   private static final int PULSEMIN = 30;   // 30 µsec, used to set/reset clk pin
   
@@ -98,6 +99,9 @@ public class HXSensor extends Sensor {
       return false;
     }
     weightData = Optional.of(CompletableFuture.supplyAsync(() -> {
+      // will cause java.lang.IllegalThreadStateException
+      //Thread.currentThread().setDaemon(true);  // to allow vm exit even if thread is running
+      
       // return value, nonnull if ok
       StampedNV snv = null;
 
@@ -136,15 +140,20 @@ public class HXSensor extends Sensor {
           count = count << 1;   //shift (*2)
           ntl = microwait(nth, PULSEMIN);
           timeErr |= (highs[i] = ntl - nth) > PULSEMAX;  // check limit
-          pinClk.setState(PinState.LOW);
           if (pinData.isHigh())
             count++;          // +1 
+          pinClk.setState(PinState.LOW);
           nth = microwait(ntl, PULSEMIN);
           timeErr |= (lows[i] = nth - ntl) > PULSEMAX;
         }
-        count = count ^ 0x800000;     // 2 complement
+        /*
+	The HX711 output range is min. 0x800000 and max. 0x7FFFFF (the value rolls over).
+	In order to convert the range to min. 0x000000 and max. 0xFFFFFF,
+	the 24th bit must be changed from 0 to 1 or from 1 to 0.
+	*/
+        count = count ^ 0x800000;
         
-        // another pulse. the 25th (or 27th) pulse at PD_SCK input will pull DOUT pin back to high
+        // another pulse
         pinClk.setState(PinState.HIGH);
         microwait(PULSEMIN);
         pinClk.setState(PinState.LOW);
@@ -157,13 +166,16 @@ public class HXSensor extends Sensor {
         Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
         
         // ======================= end critical section, check result
-        if (timeErr || count >= 0x7fffff) {     // ffffff, 7fffff are definitly wrong
+        if (timeErr || count > 0xffffff) {
           // timing exceeded is quite normal on nonrealtime. especially during startup
-          failCnt++;
-          LOG.log(Level.FINE, "count={0} failCnt={1} startErr={2} timeOvr={3}"
-            , new Object[]{Integer.toHexString(count), failCnt, startErr, timeErr});
-          LOG.log(Level.FINE, "Highs:{0}", timing(highs));
-          LOG.log(Level.FINE, "Lows: {0}", timing(lows));
+          if (++failCnt % logred == 0) {
+            LOG.log(Level.INFO, "count={0} failCnt={1} startErr={2} timeOvr={3}"
+              , new Object[]{Integer.toHexString(count), failCnt, startErr, timeErr});
+            if (timeErr) {
+              LOG.log(Level.INFO, "Highs:{0}", timing(highs));
+              LOG.log(Level.INFO, "Lows: {0}", timing(lows));
+            }
+          }
         } else {
           double sv = calibrate((double) count);
           if (Double.isNaN(weight)) {
@@ -182,8 +194,8 @@ public class HXSensor extends Sensor {
             if (pf >= PFMIN) {
               psv = sv;              
               snv = new StampedNV(getName(), Math.round(weight * 100) / 100.0);
-              if (failCnt > 0)   // log and reset failCnt
-                LOG.log(Level.FINE, "Errorcount reset after a serie of {0} faults", failCnt);
+              if (failCnt >= logred)   // log when failCnt is high
+                LOG.log(Level.INFO, "Errorcount reset after a serie of {0} faults", failCnt);
               failCnt = 0;              
             } else {
               psv = weight;     // dont store without ignoring "far off" values completly
@@ -193,7 +205,7 @@ public class HXSensor extends Sensor {
       } else {
         // try again to set into sleep state
         pinClk.setState(PinState.HIGH);
-        if (failCnt++ % logred == 0)
+        if (++failCnt % logred == 0)
           LOG.log(Level.INFO, "Unexpected: DOut should be high here (sleep state), failCnt={0}", failCnt);
       }
       return snv;
