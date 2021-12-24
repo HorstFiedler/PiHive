@@ -18,8 +18,8 @@ import java.util.logging.Logger;
  * https://electronics.stackexchange.com/questions/320528/how-read-count-of-24-bit-adc-hx711
  * and used for
  * https://community.hiveeyes.org/t/improving-the-canonical-arduino-hx711-library-for-esp32-and-beyond/539
- * Trying to overcome failing measurements by fault dedection and nice floating
- * mean
+ * Trying to overcome failing measurements by fault dedection and nice floating mean
+ * https://github.com/Poduzov/HX711-Pi4j is a too simple example
  *
  * @author horst
  */
@@ -31,8 +31,8 @@ public class HXSensor extends Sensor {
   private final GpioPinDigitalInput pinData;
 
   // for plausibility check 
-  private static final double PFMIN = 0.25; // ignore data raw data when plausibility is less than PFMIN
-  private static final double PFSHAPE = 16.0;   // > 0 , higher value reduces noise but decreases reaction time
+  private static final double PFMIN = 0.1; // ignore raw data when plausibility is less than PFMIN
+  private static final double PFSHAPE = 4.0;   // > 0 , higher value reduces noise but decreases reaction time
   private double weight = Double.NaN;  // weight (mean)
   private double psv = Double.NaN; // preceeding scaled measured value
 
@@ -67,9 +67,8 @@ public class HXSensor extends Sensor {
    * FINE: Lows: 59, 53, 49, 51, 50, 50, 48, 51, 49, 50, 48, 50, 49, 50, 48, 50, 50, 50, 47, 50, 49, 49, 48, 50
   */
   private static final int PULSEMAX = 60;   // 60 µsec, measured for data pin
-  //private static final int PULSEMAX = 80;     // pihive3 needs more time??? 
   // since bullseye,tomcat9 with zulu11 java minwidth of pulse required!?
-  private static final int PULSEMIN = 30;   // 30 µsec, used to set/reset clk pin
+  private static final int PULSEMIN = PULSEMAX/4;   
   
   private volatile int failCnt = 0;
   private final int[] highs = new int[gain];  // record high pulse timing for debug 
@@ -84,13 +83,11 @@ public class HXSensor extends Sensor {
     this.pinClk = clk;
     this.pinData = data;
   }
-
+  
   /**
-   * prepare optional future see
-   * ~/Dokumente/elektronik/raspberry/packages/HX711-Pi4j-master/HX711.java
+   * prepare optional future
    * CAVEAT: With user level java there is no chance to ensure max 60
    * microseconds shift pulses
-   *
    * @return false if no measurement is started (e.g. due to ERRMAX exceeded)
    */
   public boolean trigger() {
@@ -98,6 +95,14 @@ public class HXSensor extends Sensor {
       LOG.log(Level.WARNING, "Errorlimit exceeded");
       return false;
     }
+    if (Double.isNaN(weight)) {   // new session ?
+      StampedNV last = getLast();
+      if (last != null)
+        weight = psv = (double)(last.value);   // use that for plausibility checking
+      if (!Double.isNaN(weight))
+        LOG.log(Level.INFO, "Weight restored to {0}", weight);
+    }
+    
     weightData = Optional.of(CompletableFuture.supplyAsync(() -> {
       // will cause java.lang.IllegalThreadStateException
       //Thread.currentThread().setDaemon(true);  // to allow vm exit even if thread is running
@@ -137,14 +142,14 @@ public class HXSensor extends Sensor {
         int ntl;
         for (int i = 0; i < gain; i++) {
           pinClk.setState(PinState.HIGH);
-          count = count << 1;   //shift (*2)
           ntl = microwait(nth, PULSEMIN);
           timeErr |= (highs[i] = ntl - nth) > PULSEMAX;  // check limit
+          count = count << 1;   //shift (*2)
           if (pinData.isHigh())
             count++;          // +1 
           pinClk.setState(PinState.LOW);
           nth = microwait(ntl, PULSEMIN);
-          timeErr |= (lows[i] = nth - ntl) > PULSEMAX;
+          timeErr |= (lows[i] = nth - ntl) > PULSEMAX + PULSEMIN;  // may take longer
         }
         /*
 	The HX711 output range is min. 0x800000 and max. 0x7FFFFF (the value rolls over).
@@ -155,9 +160,9 @@ public class HXSensor extends Sensor {
         
         // another pulse
         pinClk.setState(PinState.HIGH);
-        microwait(PULSEMIN);
+        ntl = microwait(nth, PULSEMIN);
         pinClk.setState(PinState.LOW);
-        microwait(PULSEMIN);
+        microwait(ntl, PULSEMIN);
         
         // poweroff (keep high for long time) 
         pinClk.setState(PinState.HIGH); // The 25th (or 27th) pulse at PD_SCK input will pull DOUT pin back to high        
@@ -165,8 +170,11 @@ public class HXSensor extends Sensor {
         Gpio.piHiPri(10);    // thread finish will do, nevertheless
         Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
         
-        // ======================= end critical section, check result
-        if (timeErr || count > 0xffffff) {
+        // ======================= end critical section
+        /* timing exceeded is quite normal on nonrealtime. especially during startup
+        * ending with all bits set indicate failure, dont rely on pf, aka avoid to many journal messages
+        */
+        if (timeErr || count > 0xffffff || (count & 0xff) == 0xff) { 
           // timing exceeded is quite normal on nonrealtime. especially during startup
           if (++failCnt % logred == 0) {
             LOG.log(Level.INFO, "count={0} failCnt={1} startErr={2} timeOvr={3}"
@@ -179,10 +187,10 @@ public class HXSensor extends Sensor {
         } else {
           double sv = calibrate((double) count);
           if (Double.isNaN(weight)) {
-            weight = psv = sv;   // startup
+            weight = psv = sv;   // startup, often very faulty value
           } else {
             // plausibiltiy factor for floating mean, see e.g. 1/(5x+1) on https://rechneronline.de/funktionsgraphen/
-            double pf = 1.0 / (1.0 + PFSHAPE * Math.abs(sv - psv)* getDelta());
+            double pf = 1.0 / (1.0 + PFSHAPE * Math.abs(sv - psv) / getDelta());
             weight = pf * sv + (1.0 - pf) * weight;
             if (pf < PFMIN || logred == 1) {
               // log when plausibility is very low (bitshift error or huge weight change) or Level.FINE
@@ -225,9 +233,11 @@ public class HXSensor extends Sensor {
     while ((nt = (int)System.nanoTime()/1000) < till){}
     return nt;
   }
+  /*
   private int microwait (int ns) {
     return microwait((int)System.nanoTime()/1000, ns);
   }
+  */
   
   private String timing(int[]times) {
     StringBuilder sb = new StringBuilder();

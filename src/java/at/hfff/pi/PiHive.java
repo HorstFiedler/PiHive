@@ -139,7 +139,7 @@ public class PiHive implements Runnable {
     
     // setup data logger
     File logData = new File(persistDir, DATALOG);
-
+    
     // get old data
     List<StampedNV> nvL = new ArrayList<>();
     try (LineNumberReader fr = new LineNumberReader(new FileReader(logData))) {
