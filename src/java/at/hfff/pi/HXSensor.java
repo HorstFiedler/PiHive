@@ -41,8 +41,8 @@ public class HXSensor extends Sensor {
   // channel B, gain factor 32 : 25
   private final int gain = 24;   // ticks for high precission  (HX711 default)
 
-  // retry limit ( ~10 minutes)
-  private static final int ERRMAX = 600;
+  // retry limit ( ~1 hour)
+  private static final int ERRMAX = 3600;
 
   // logging when failCnt mod ERRLOG == 0 (Level.FINE -> ERRLOG becomes 1 (each occurence)  
   private static final int ERRLOG = 60;
@@ -68,8 +68,9 @@ public class HXSensor extends Sensor {
   */
   private static final int PULSEMAX = 60;   // 60 µsec, measured for data pin
   // since bullseye,tomcat9 with zulu11 java minwidth of pulse required!?
-  private static final int PULSEMIN = PULSEMAX/4;   
-  
+  // pihive3 seems to need >= 20, if 15 result is always 0x07fffff
+  private static final int PULSEMIN = 20;   
+
   private volatile int failCnt = 0;
   private final int[] highs = new int[gain];  // record high pulse timing for debug 
   private final int[] lows = new int[gain];   // record low pulse timing for debug
@@ -117,7 +118,6 @@ public class HXSensor extends Sensor {
       if (pinData.isHigh()) {
         pinClk.setState(PinState.LOW);    // return to normal mode (wakeup)
 
-      
         Arrays.fill(highs, 0);   // for pulse timing check   
         Arrays.fill(lows, 0);
         
@@ -138,18 +138,17 @@ public class HXSensor extends Sensor {
         int count = 0;
         boolean timeErr = false;      // timing error
         boolean startErr = !pinData.isLow();   // DOut should be low here (data ready)");  
-        int nth = (int)System.nanoTime()/1000;
-        int ntl;
+        long ntl, nth = System.nanoTime();
         for (int i = 0; i < gain; i++) {
           pinClk.setState(PinState.HIGH);
           ntl = microwait(nth, PULSEMIN);
-          timeErr |= (highs[i] = ntl - nth) > PULSEMAX;  // check limit
-          count = count << 1;   //shift (*2)
+          timeErr |= (highs[i] = (int)(ntl - nth)/1000) > PULSEMAX;  // check limit
+          count *= 2;   //shift (*2)
           if (pinData.isHigh())
             count++;          // +1 
           pinClk.setState(PinState.LOW);
           nth = microwait(ntl, PULSEMIN);
-          timeErr |= (lows[i] = nth - ntl) > PULSEMAX + PULSEMIN;  // may take longer
+          timeErr |= (lows[i] = (int)(nth - ntl)/1000) > PULSEMAX;  // usuall higher
         }
         /*
 	The HX711 output range is min. 0x800000 and max. 0x7FFFFF (the value rolls over).
@@ -225,12 +224,12 @@ public class HXSensor extends Sensor {
    * short inline delay
    * @param st timing start
    * @param ns microseconds to expire
-   * @return current micro time
+   * @return current nano time
    */
-  private int microwait (int st, int ns) {
-    int till = st + ns;
-    int nt;
-    while ((nt = (int)System.nanoTime()/1000) < till){}
+  private long microwait (long st, int ns) {
+    long till = st + ns * 1000;
+    long nt;
+    while ((nt = System.nanoTime()) < till){}
     return nt;
   }
   /*

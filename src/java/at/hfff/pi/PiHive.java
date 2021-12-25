@@ -366,7 +366,7 @@ public class PiHive implements Runnable {
               if (!((HXSensor) sensor).trigger()) {
                 sensor.setEnabled(false);
                 LOG.log(Level.WARNING, "Sensor {0} malfunction, disabled", sensor.getName());
-              }
+          }
             }
           }
         });    
